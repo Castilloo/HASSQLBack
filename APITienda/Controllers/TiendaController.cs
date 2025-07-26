@@ -132,18 +132,44 @@ public class TiendaController : ControllerBase
 
     }
 
-    [HttpPut("actualizar-producto/{referencia}")]
+    [HttpPut("editar-producto/{referencia}")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> ActualizarProducto([FromBody] NuevoProductoDto producto, [FromRoute] string referencia)
+    public async Task<IActionResult> ActualizarProducto([FromForm] NuevoProductoConImagenDto producto, [FromRoute] string referencia)
     {
         try
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var actualizado = await _repository.ActualizarProducto(producto);
+            var productoAnterior = await _repository.ObtenerProductoPorRef(referencia);
+
+            if (producto.Imagen != null && producto.Imagen.Name != productoAnterior.Imagen)
+            {
+                var rutaCarpeta = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+                if (!Directory.Exists(rutaCarpeta)) Directory.CreateDirectory(rutaCarpeta);
+
+                var rutaArchivo = Path.Combine(rutaCarpeta, producto.Imagen.FileName.Replace(' ', '-'));
+                using var stream = new FileStream(rutaArchivo, FileMode.Create);
+                await producto.Imagen.CopyToAsync(stream);
+            }
+
+            var nuevoProducto = new NuevoProductoDto
+            {
+                Nombre = producto.Nombre,
+                Precio = producto.Precio,
+                Imagen = producto is null
+                        ? "/uploads/" + producto!.Imagen!.FileName 
+                        : productoAnterior.Imagen,
+                Cantidad = producto.Cantidad,
+                Descripcion = producto.Descripcion,
+                IdCategoria = producto.IdCategoria,
+                IdMarca = producto.IdMarca,
+                Referencia = producto.Referencia
+            };
+
+            var actualizado = await _repository.ActualizarProducto(nuevoProducto);
             return Ok(new { mensaje = "Actualización exitosa", data = actualizado });
         }
         catch (ArgumentException ex)
@@ -169,14 +195,36 @@ public class TiendaController : ControllerBase
     [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GuardarProducto([FromBody] NuevoProductoDto producto)
+    public async Task<IActionResult> GuardarProducto([FromForm] NuevoProductoConImagenDto producto)
     {
         try
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var guardado = await _repository.GuardarProducto(producto);
+            if (producto.Imagen != null && producto.Imagen.Length > 0)
+            {
+                var rutaCarpeta = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+                if (!Directory.Exists(rutaCarpeta)) Directory.CreateDirectory(rutaCarpeta);
+
+                var rutaArchivo = Path.Combine(rutaCarpeta, producto.Imagen.FileName);
+                using var stream = new FileStream(rutaArchivo, FileMode.Create);
+                await producto.Imagen.CopyToAsync(stream);
+            }
+
+            var nuevoProducto = new NuevoProductoDto
+            {
+                Nombre = producto.Nombre,
+                Precio = producto.Precio,
+                Imagen = "/uploads/" + producto.Imagen!.FileName,
+                Cantidad = producto.Cantidad,
+                Descripcion = producto.Descripcion,
+                IdCategoria = producto.IdCategoria,
+                IdMarca = producto.IdMarca,
+                Referencia = producto.Referencia
+            };
+
+            var guardado = await _repository.GuardarProducto(nuevoProducto);
             if (guardado)
                 return Created("Success", new
                 {
@@ -198,7 +246,7 @@ public class TiendaController : ControllerBase
         }
     }
 
-    [HttpDelete("delete/{referencia}")]
+    [HttpDelete("borrar-producto/{referencia}")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> EliminarProducto(string referencia)
