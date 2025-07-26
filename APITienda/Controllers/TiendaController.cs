@@ -44,6 +44,29 @@ public class TiendaController : ControllerBase
 
     }
 
+    [HttpGet("producto/{referencia}")]
+    [ProducesResponseType(typeof(ProductoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ObtenerProductos(string referencia)
+    {
+        try
+        {
+            _logger.LogInformation("Obteniendo producto desde el controlador");
+            var producto = await _repository.ObtenerProductoPorRef(referencia.Trim());
+
+            return Ok(new ApiResponse<ProductoDto>(producto)
+            {
+                Mensaje = "Producto obtenido correctamente."
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener productos");
+            return StatusCode(500, new ApiResponse<string>("Error interno del servidor", false));
+        }
+
+    }
+
     [HttpGet("marcas")]
     [ProducesResponseType(typeof(IEnumerable<Marca>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
@@ -75,9 +98,12 @@ public class TiendaController : ControllerBase
         try
         {
             _logger.LogInformation("Obteniendo categorías desde el controlador");
-            var result = await _repository.ObtenerCategorias();
+            var categorias = await _repository.ObtenerCategorias();
 
-            return Ok(result);
+            return Ok(new ApiResponse<IEnumerable<Categoria>>(categorias)
+            {
+                Mensaje = "Categorías obtenidas correctamente."
+            });
         }
         catch (Exception ex)
         {

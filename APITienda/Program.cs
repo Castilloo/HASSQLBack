@@ -1,5 +1,6 @@
 using APITienda.Repository;
 using FacturasTienda.Context;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 var baseURL = builder.Configuration["Policy:Frontend"];
@@ -7,7 +8,14 @@ var connection = builder.Configuration.GetConnectionString("Connection");
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = builder.Configuration["Swagger:Title"] ?? "API Tienda",
+        Version = builder.Configuration["Swagger:Version"] ?? "v1"
+    });
+});
 
 builder.Services.Configure<DatabaseSettings>(opt =>
 {
@@ -17,11 +25,13 @@ builder.Services.Configure<DatabaseSettings>(opt =>
 builder.Services.AddScoped<ITiendaRepository, TiendaRepository>();
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
+    options.AddPolicy("MyCorsPolicy", policy =>
     {
         policy
-            .AllowCredentials()
-            .AllowAnyHeader();
+            .WithOrigins(baseURL!) // asegúrate que no sea null
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
     });
 });
 
@@ -34,11 +44,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseHttpsRedirection();
+
+app.UseCors("MyCorsPolicy");
 
 app.UseAuthorization();
-
-app.UseHttpsRedirection();
-app.UseCors();
 
 app.MapControllers();
 

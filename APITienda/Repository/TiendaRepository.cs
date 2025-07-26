@@ -43,6 +43,29 @@ public class TiendaRepository : ITiendaRepository
         }
     }
 
+    public async Task<ProductoDto> ObtenerProductoPorRef(string referencia)
+    {
+        try
+        {
+            using var connection = CreateConnection();
+            const string query = "EXEC ProductosDetallados @Referencia = @Ref";
+
+            var producto = await connection.QueryAsync<ProductoDto>(query, new { Ref = referencia });
+            return producto.FirstOrDefault() ?? new ProductoDto();
+        }
+        catch (SqlException ex)
+        {
+            LogSqlException(ex);
+            throw new Exception("Error al obtener producto en la base de datos", ex);
+        }
+        catch (Exception ex)
+        {
+            LogException(ex);
+            throw;
+        }
+    }
+
+
     public async Task<bool> ExisteProducto(string referencia)
     {
         try
@@ -220,7 +243,6 @@ public class TiendaRepository : ITiendaRepository
             throw;
         }
     }
-
     private void LogSqlException(SqlException ex)
     {
         _logger.LogError(ex, "SQL Error: {Message}, Código: {Code}", ex.Message, ex.Number);
@@ -230,4 +252,6 @@ public class TiendaRepository : ITiendaRepository
     {
         _logger.LogError(ex, "Error: {Message}", ex.Message);
     }
+
+    
 }
