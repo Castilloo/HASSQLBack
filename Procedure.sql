@@ -1,4 +1,6 @@
-ALTER PROCEDURE ProductosDetallados AS 
+CREATE PROCEDURE ProductosDetallados
+	@Referencia VARCHAR(100) = NULL
+AS
 BEGIN
 	SELECT 
 		p.IdProducto,
@@ -13,5 +15,6 @@ BEGIN
 		p.FechaCreacion
 	FROM Productos p
 	JOIN Categorias c ON c.IdCategoria = p.IdCategoria
-	JOIN Marcas m ON m.IdMarca = p.IdMarca;
+	JOIN Marcas m ON m.IdMarca = p.IdMarca
+	WHERE (@Referencia IS NULL OR Referencia = @Referencia);
 END;
